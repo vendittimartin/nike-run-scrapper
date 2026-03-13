@@ -42,7 +42,15 @@ def scrape_available_events() -> list[dict]:
     Each item: {"id": "17_DE_MARZO_DE_19_A_21_HS", "date": "17 DE MARZO | DE 19 A 21 HS"}
     """
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+            ],
+        )
         context = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -50,27 +58,31 @@ def scrape_available_events() -> list[dict]:
                 "Chrome/121.0.0.0 Safari/537.36"
             ),
             viewport={"width": 1920, "height": 1080},
+            locale="es-AR",
+        )
+        # Hide automation fingerprint
+        context.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
         page = context.new_page()
 
         try:
             print(f"  Loading {TARGET_URL} ...")
-            page.goto(TARGET_URL, wait_until="load", timeout=60_000)
+            page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=60_000)
 
             # Wait until the event cards render (VTEX loads content async)
-            # We poll until "Inscribirme" or "Finalizado" appears in the visible DOM
             print("  Waiting for event cards to render...")
             try:
                 page.wait_for_function(
                     """() => {
                         const text = document.body.innerText || '';
-                        return text.includes('Inscribirme') || text.includes('Finalizado');
+                        return text.includes('Inscribirme') || text.includes('Finalizado') || text.includes('miembro');
                     }""",
-                    timeout=30_000,
+                    timeout=45_000,
                 )
             except Exception:
-                print("  WARNING: event cards did not appear within 30s, trying anyway...")
-            page.wait_for_timeout(2_000)
+                print("  WARNING: event cards did not appear within 45s, trying anyway...")
+            page.wait_for_timeout(3_000)
 
             # Each card has an <a class="*infoCardButton"> with:
             #   - "Finalizado"      → href="/login?returnUrl="  (no experience UUID)
