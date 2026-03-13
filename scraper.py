@@ -156,13 +156,12 @@ def send_notification(event: dict):
     </div>
     """
 
-    params = resend.Emails.SendParams(
-        from_="Nike Monitor <onboarding@resend.dev>",
-        to=[RECIPIENT_EMAIL],
-        subject=f"Nike Run BA — Nuevo evento disponible ({status})",
-        html=html,
-    )
-    resend.Emails.send(params)
+    resend.Emails.send({
+        "from": "Nike Monitor <onboarding@resend.dev>",
+        "to": [RECIPIENT_EMAIL],
+        "subject": f"Nike Run BA — Nuevo evento disponible ({status})",
+        "html": html,
+    })
     print(f"  Email sent for event: {event['id']} ({status})")
 
 
